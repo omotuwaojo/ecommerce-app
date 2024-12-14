@@ -102,4 +102,138 @@ router.put("/api/db/products/:id", async (req, res) => {
   }
 });
 
+// Route to delete a product by ID
+router.delete("/api/db/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params; // Extract the ID from the URL
+
+    // Check if the ID is valid
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+
+    await client.connect(); // Connect to MongoDB
+    const database = client.db("ecommerce");
+    const collection = database.collection("products");
+
+    // Delete the product by ID
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Product not found" }); // If no product is found
+    }
+
+    res.status(200).json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting product by ID:", error);
+    res.status(500).send("Server error");
+  } finally {
+    await client.close(); // Ensure the connection is closed
+  }
+});
+
+
+// Route to delete multiple products
+router.delete("/api/db/products", async (req, res) => {
+  try {
+    const { ids } = req.body; // Extract array of IDs from the request body
+
+    // Validate if `ids` is an array and not empty
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "Provide a valid array of IDs" });
+    }
+
+    // Validate all IDs in the array
+    const validIds = ids.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) {
+      return res.status(400).json({ message: "No valid IDs provided" });
+    }
+
+    await client.connect(); // Connect to MongoDB
+    const database = client.db("ecommerce");
+    const collection = database.collection("products");
+
+    // Delete multiple products by IDs
+    const result = await collection.deleteMany({
+      _id: { $in: validIds.map((id) => new ObjectId(id)) },
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "No products were deleted" });
+    }
+
+    res.status(200).json({
+      message: "Products deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting multiple products:", error);
+    res.status(500).send("Server error");
+  } finally {
+    await client.close(); // Ensure the connection is closed
+  }
+});
+
+
+// Route to insert a single product
+router.post("/api/db/products", async (req, res) => {
+  try {
+    const productData = req.body; // Extract product data from the request body
+
+    // Validate product data
+    if (!productData.name || !productData.description || !productData.price || !productData.category) {
+      return res.status(400).json({ message: "Name, description, price and category are required" });
+    }
+
+    await client.connect(); // Connect to MongoDB
+    const database = client.db("ecommerce");
+    const collection = database.collection("products");
+
+    // Insert the product into the database
+    const result = await collection.insertOne(productData);
+
+    res.status(201).json({
+      message: "Product added successfully",
+      productId: result.insertedId,
+    });
+  } catch (error) {
+    console.error("Error inserting product:", error);
+    res.status(500).send("Server error");
+  } finally {
+    await client.close(); // Ensure the connection is closed
+  }
+});
+
+//Routes to add many data
+router.post("/api/db/products/bulk", async (req, res) => {
+  try {
+    const productsData = req.body; // Expect an array of products
+
+    // Validate if the data is an array
+    if (!Array.isArray(productsData) || productsData.length === 0) {
+      return res.status(400).json({ message: "Provide a valid array of product data" });
+    }
+
+    await client.connect();
+    const database = client.db("ecommerce");
+    const collection = database.collection("products");
+
+    // Insert multiple products
+    const result = await collection.insertMany(productsData);
+
+    res.status(201).json({
+      message: "Products added successfully",
+      insertedCount: result.insertedCount,
+    });
+  } catch (error) {
+    console.error("Error inserting products:", error);
+    res.status(500).send("Server error");
+  } finally {
+    await client.close();
+  }
+});
+
+
+
+
 module.exports = router;

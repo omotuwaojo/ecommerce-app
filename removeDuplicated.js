@@ -50,4 +50,4 @@ async function removeDuplicates() {
   }
 }
 
-removeDuplicates();
+removeDuplicates(); // to removeDuplicated data 
